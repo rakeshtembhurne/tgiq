@@ -9,7 +9,7 @@ try {
     $fb = new FbStats($config);
     $user = $fb->getInfo('me');
     $_SESSION['user'] = $user;
-    header("Location: questions.php");
+    header("Location: question.php");
 } catch (Exception $e) {
 	unset($_SESSION['user']);
     echo '<div class="alert-message error">' . $e->getMessage() . '</div>';

@@ -1,55 +1,67 @@
 <?php
 
 if(!session_id())
-  session_start();
+    session_start();
 
-$_SESSION['quiz']++;
-
-session_destroy();
-var_dump($_SESSION);
+if (empty($_SESSION['currentQuestion'])) {
+    $_SESSION['currentQuestion'] = 1;
+}
 
 //Connects to the Database 
+$username = 'root';
+$password = 'root';
+$hostname = 'localhost';
+$dbhandle = mysql_connect($hostname, $username, $password) or die("Unable to connect to MYSQL database");
+$selected = mysql_select_db("tgiq",$dbhandle) or die("Could not select TGIQ Database");
 
- $username = 'root';
- $password = '';
- $hostname = 'localhost';
- $dbhandle = mysql_connect($hostname, $username, $password) or die("Unable to connect to MYSQL database");
- $selected = mysql_select_db("tgiq",$dbhandle) or die("Could not select TGIQ Database");
-
-
+function debug($var)
+{
+    echo "<pre>";
+    var_dump($var);
+    echo "</pre>";
+}
 
 //Here is the TGIQ Class Code
+class Tgiq
+{
+    public function getCurrentQuestion()
+    {
+        $currentQuestion = $_SESSION['currentQuestion'];
+        $result = mysql_query("SELECT * from questions WHERE id = $currentQuestion");
+        while ($row = mysql_fetch_assoc($result)) 
+        {
+            return $row;
+        }
+    }
 
- class tgiq 
- { 
-   public function getcurrentquestion()
-   {
-     $currentquestion = $_SESSION['currentquestion'];
-     $result = mysql_query("SELECT * from questions WHERE id = $currentquestion");
-     while ($row = mysql_fetch_assoc($result)) 
-     {
-        
-          return $row;
-     }
+    public function saveQuestion($data)
+    {
+        $currentQuestion = $this->getCurrentQuestion();
 
-
-   }
-
-   public function savequestion($data)
-   {
-      $currentquestion = $this->getcurrentquestion();
-
-      if($data['answers'] == $currentquestion['answer']) {
-        $_SESSION['score']++;
-        echo $_SESSION['score'];
-      }
-    
-   }
+        if($data['answer'] == $currentQuestion['answer']) {
+            $_SESSION['userAnswers'][$data['question_number']] = $currentQuestion['answer'];
+            //$_SESSION['score']++;
+            $_SESSION['currentQuestion']++;
+        }        
+    }
+}
 
 
- }
-  
-$var 
+$tgiq  = new Tgiq();
+$error = null;
+
+debug($_POST);
+debug($_SESSION['userAnswers']);
+// Saved question if submitted
+if (!empty($_POST)) {
+    if (!empty($_POST['question_number']) AND !empty($_POST['answer'])) {
+        $tgiq->saveQuestion($_POST);
+    } else {
+        $error = 'An answer must be selected.';
+    }
+}
+$currentQuestion = $tgiq->getCurrentQuestion();
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -107,37 +119,44 @@ $var
     </div>
 
     <div class="container">
-
+      <?php if (!empty($error)): ?>
+          <div class="alert alert-error"><?php echo $error; ?></div>
+      <?php endif; ?>
       <!-- Main hero unit for a primary marketing message or call to action -->
       <div class="hero-unit">
-        <h1><?php   echo $row['question']; ?></h1>
+        <h1><?php echo $currentQuestion['question']; ?></h1>
 
         <p>&nbsp;</p>
         
-        <form class="form-horizontal">
+        <form method="POST" class="form-horizontal">
+            <input type="hidden" name="question_number" value="<?php echo $currentQuestion['id'] ?>" />
 		  <fieldset>
 			<div class="control-group">
             <label class="control-label">Choose Answer : </label>
           <div class="controls">
               <label class="radio">
-                <input type="radio" name="optionsRadios" id="optionsRadios1" value="option1" checked>
-                Option one is this and that&mdash;be sure to include why it's great
+                <input type="radio" name="answer" value="1" />
+                <?php echo $currentQuestion['option_1']?>
               </label>
               <label class="radio">
-                <input type="radio" name="optionsRadios" id="optionsRadios2" value="option2">
-                Option two can be something else and selecting it will deselect option one
+                <input type="radio" name="answer" value="2" />
+                <?php echo $currentQuestion['option_2']?>
               </label>
               <label class="radio">
-                <input type="radio" name="optionsRadios" id="optionsRadios1" value="option1" checked>
-                Option one is this and that&mdash;be sure to include why it's great
+                <input type="radio" name="answer" value="3" />
+                <?php echo $currentQuestion['option_3']?>
               </label>
               <label class="radio">
-              <input type="radio" name="optionsRadios" id="optionsRadios2" value="option1">
-                Option two can be something else and selecting it will deselect option one
+              <input type="radio" name="answer" value="4" />
+                <?php echo $currentQuestion['option_4']?>
               </label>
-              
           </div>
-          <input type="submit" value="Next Questions" class="btn btn-primary btn-large"/>
+          <?php if ($currentQuestion['id'] >= 15): ?>
+              <input type="submit" value="Jai Hind!" class="btn btn-success btn-large"/>
+          <?php else: ?>
+              <input type="submit" value="Next Questions" class="btn btn-primary btn-large"/>
+          <?php endif; ?>
+          
 		  </fieldset>
 		</form>
 
